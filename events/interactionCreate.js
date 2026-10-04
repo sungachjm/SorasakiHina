@@ -8,11 +8,16 @@ const configStore =
 const configCommand =
     require("../commands/config");
 
+const verification =
+    require("../services/verification");
+
 module.exports = async function(interaction) {
 
-    // =====================================
-    // SLASH COMMAND
-    // =====================================
+    /*
+     * ==============================
+     * SLASH COMMANDS
+     * ==============================
+     */
 
     if (
         interaction.isChatInputCommand()
@@ -46,16 +51,29 @@ module.exports = async function(interaction) {
                 ephemeral: true
             };
 
-            if (
-                interaction.replied ||
-                interaction.deferred
-            ) {
-                await interaction.followUp(
-                    response
-                );
-            } else {
-                await interaction.reply(
-                    response
+            try {
+
+                if (
+                    interaction.replied ||
+                    interaction.deferred
+                ) {
+
+                    await interaction.followUp(
+                        response
+                    );
+
+                } else {
+
+                    await interaction.reply(
+                        response
+                    );
+                }
+
+            } catch (replyError) {
+
+                console.error(
+                    "Interaction reply error:",
+                    replyError.message
                 );
             }
         }
@@ -63,13 +81,93 @@ module.exports = async function(interaction) {
         return;
     }
 
-    // =====================================
-    // BUTTON
-    // =====================================
+
+    /*
+     * ==============================
+     * BUTTONS
+     * ==============================
+     */
 
     if (!interaction.isButton()) {
         return;
     }
+
+
+    /*
+     * ==============================
+     * VERIFICATION BUTTON
+     * ==============================
+     */
+
+    if (
+        interaction.customId ===
+        "protector_verify"
+    ) {
+
+        try {
+
+            await interaction.deferReply({
+                ephemeral: true
+            });
+
+            if (
+                !interaction.guild ||
+                !interaction.member
+            ) {
+
+                return interaction.editReply({
+                    content:
+                        "❌ Không thể xác minh ở đây."
+                });
+            }
+
+            const result =
+                await verification.verifyMember(
+                    interaction.member
+                );
+
+            if (!result.success) {
+
+                return interaction.editReply({
+                    content:
+                        `❌ Xác minh thất bại: ${result.reason}`
+                });
+            }
+
+            return interaction.editReply({
+                content:
+                    "✅ **Xác minh thành công!**\n" +
+                    "Bạn đã được cấp quyền truy cập server."
+            });
+
+        } catch (error) {
+
+            console.error(
+                "Verification interaction error:",
+                error
+            );
+
+            if (
+                interaction.deferred
+            ) {
+
+                return interaction.editReply({
+                    content:
+                        "❌ Đã xảy ra lỗi trong quá trình xác minh."
+                });
+
+            }
+
+            return;
+        }
+    }
+
+
+    /*
+     * ==============================
+     * PROTECTOR BUTTONS
+     * ==============================
+     */
 
     if (
         !interaction.customId.startsWith(
@@ -79,15 +177,18 @@ module.exports = async function(interaction) {
         return;
     }
 
-    // =====================================
-    // CHECK PERMISSION
-    // =====================================
+
+    /*
+     * Chỉ người có Manage Server
+     * mới được điều khiển Config Panel.
+     */
 
     if (
         !interaction.memberPermissions?.has(
             PermissionFlagsBits.ManageGuild
         )
     ) {
+
         return interaction.reply({
             content:
                 "❌ Bạn cần quyền **Manage Server**.",
@@ -95,15 +196,34 @@ module.exports = async function(interaction) {
         });
     }
 
+
+    /*
+     * Kiểm tra guild
+     */
+
+    if (!interaction.guild) {
+        return interaction.reply({
+            content:
+                "❌ Chức năng này chỉ dùng trong server.",
+            ephemeral: true
+        });
+    }
+
+
     const guildId =
         interaction.guild.id;
 
     const config =
-        configStore.get(guildId);
+        configStore.get(
+            guildId
+        );
 
-    // =====================================
-    // SETTINGS MAP
-    // =====================================
+
+    /*
+     * ==============================
+     * TOGGLE SETTINGS
+     * ==============================
+     */
 
     const settings = {
 
@@ -132,14 +252,12 @@ module.exports = async function(interaction) {
             "quarantine"
     };
 
+
     const setting =
         settings[
             interaction.customId
         ];
 
-    // =====================================
-    // TOGGLE SECURITY
-    // =====================================
 
     if (setting) {
 
@@ -149,22 +267,36 @@ module.exports = async function(interaction) {
         configStore.update(
             guildId,
             {
-                [setting]: newValue
+                [setting]:
+                    newValue
             }
         );
 
-        await interaction.update(
-            configCommand.createPanel(
-                interaction.guild
-            )
-        );
+        try {
+
+            await interaction.update(
+                configCommand.createPanel(
+                    interaction.guild
+                )
+            );
+
+        } catch (error) {
+
+            console.error(
+                "Config update error:",
+                error.message
+            );
+        }
 
         return;
     }
 
-    // =====================================
-    // LANGUAGE
-    // =====================================
+
+    /*
+     * ==============================
+     * LANGUAGE
+     * ==============================
+     */
 
     if (
         interaction.customId ===
@@ -179,7 +311,8 @@ module.exports = async function(interaction) {
         configStore.update(
             guildId,
             {
-                language: newLanguage
+                language:
+                    newLanguage
             }
         );
 
@@ -192,9 +325,12 @@ module.exports = async function(interaction) {
         return;
     }
 
-    // =====================================
-    // REFRESH
-    // =====================================
+
+    /*
+     * ==============================
+     * REFRESH
+     * ==============================
+     */
 
     if (
         interaction.customId ===
