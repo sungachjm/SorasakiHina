@@ -1,3 +1,7 @@
+const {
+    PermissionFlagsBits
+} = require("discord.js");
+
 const configStore =
     require("../services/configStore");
 
@@ -9,9 +13,9 @@ const verification =
 
 module.exports = async function(interaction) {
 
-    // ==========================================
+    // ==============================
     // SLASH COMMANDS
-    // ==========================================
+    // ==============================
 
     if (interaction.isChatInputCommand()) {
 
@@ -25,9 +29,9 @@ module.exports = async function(interaction) {
         }
 
         try {
-
-            await command.execute(interaction);
-
+            await command.execute(
+                interaction
+            );
         } catch (error) {
 
             console.error(
@@ -47,13 +51,10 @@ module.exports = async function(interaction) {
                     interaction.replied ||
                     interaction.deferred
                 ) {
-
                     await interaction.followUp(
                         response
                     );
-
                 } else {
-
                     await interaction.reply(
                         response
                     );
@@ -71,19 +72,17 @@ module.exports = async function(interaction) {
         return;
     }
 
-
-    // ==========================================
+    // ==============================
     // BUTTONS
-    // ==========================================
+    // ==============================
 
     if (!interaction.isButton()) {
         return;
     }
 
-
-    // ==========================================
-    // VERIFICATION BUTTON
-    // ==========================================
+    // ==============================
+    // VERIFICATION
+    // ==============================
 
     if (
         interaction.customId ===
@@ -100,7 +99,6 @@ module.exports = async function(interaction) {
                 !interaction.guild ||
                 !interaction.member
             ) {
-
                 return interaction.editReply({
                     content:
                         "❌ Không thể xác minh ở đây."
@@ -113,7 +111,6 @@ module.exports = async function(interaction) {
                 );
 
             if (!result.success) {
-
                 return interaction.editReply({
                     content:
                         `❌ Xác minh thất bại: ${result.reason}`
@@ -136,12 +133,10 @@ module.exports = async function(interaction) {
             try {
 
                 if (interaction.deferred) {
-
                     return interaction.editReply({
                         content:
                             "❌ Đã xảy ra lỗi trong quá trình xác minh."
                     });
-
                 }
 
             } catch {}
@@ -150,10 +145,9 @@ module.exports = async function(interaction) {
         }
     }
 
-
-    // ==========================================
+    // ==============================
     // PROTECTOR CONFIG BUTTONS
-    // ==========================================
+    // ==============================
 
     if (
         !interaction.customId.startsWith(
@@ -163,24 +157,7 @@ module.exports = async function(interaction) {
         return;
     }
 
-
-    // Chỉ OWNER_ID được sử dụng Config
-    if (
-        !process.env.OWNER_ID ||
-        interaction.user.id !==
-        process.env.OWNER_ID
-    ) {
-
-        return interaction.reply({
-            content:
-                "❌ Chỉ Owner của bot mới có thể sử dụng Protector Config.",
-            ephemeral: true
-        });
-    }
-
-
     if (!interaction.guild) {
-
         return interaction.reply({
             content:
                 "❌ Chức năng này chỉ dùng trong server.",
@@ -188,6 +165,19 @@ module.exports = async function(interaction) {
         });
     }
 
+    // Chỉ người có Manage Server
+    // mới được điều khiển Config
+    if (
+        !interaction.memberPermissions?.has(
+            PermissionFlagsBits.ManageGuild
+        )
+    ) {
+        return interaction.reply({
+            content:
+                "❌ Bạn cần quyền Manage Server để sử dụng Protector Config.",
+            ephemeral: true
+        });
+    }
 
     const guildId =
         interaction.guild.id;
@@ -195,10 +185,9 @@ module.exports = async function(interaction) {
     const config =
         configStore.get(guildId);
 
-
-    // ==========================================
-    // CONFIG SETTINGS
-    // ==========================================
+    // ==============================
+    // TOGGLE SETTINGS
+    // ==============================
 
     const settings = {
 
@@ -227,16 +216,10 @@ module.exports = async function(interaction) {
             "quarantine"
     };
 
-
     const setting =
         settings[
             interaction.customId
         ];
-
-
-    // ==========================================
-    // TOGGLE SECURITY
-    // ==========================================
 
     if (setting) {
 
@@ -270,10 +253,9 @@ module.exports = async function(interaction) {
         return;
     }
 
-
-    // ==========================================
+    // ==============================
     // LANGUAGE
-    // ==========================================
+    // ==============================
 
     if (
         interaction.customId ===
@@ -300,10 +282,9 @@ module.exports = async function(interaction) {
         );
     }
 
-
-    // ==========================================
+    // ==============================
     // REFRESH
-    // ==========================================
+    // ==============================
 
     if (
         interaction.customId ===
