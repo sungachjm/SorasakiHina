@@ -3,7 +3,8 @@ const {
     EmbedBuilder,
     ActionRowBuilder,
     ButtonBuilder,
-    ButtonStyle
+    ButtonStyle,
+    PermissionFlagsBits
 } = require("discord.js");
 
 const configStore =
@@ -75,7 +76,8 @@ function createPanel(guild) {
                 }
             )
             .setFooter({
-                text: "Protector Security System"
+                text:
+                    "Protector Security System"
             })
             .setTimestamp();
 
@@ -158,26 +160,16 @@ function createPanel(guild) {
 }
 
 module.exports = {
-
     data: new SlashCommandBuilder()
         .setName("config")
         .setDescription(
             "Mở bảng điều khiển Protector."
+        )
+        .setDefaultMemberPermissions(
+            PermissionFlagsBits.ManageGuild
         ),
 
     async execute(interaction) {
-
-        if (
-            !process.env.OWNER_ID ||
-            interaction.user.id !==
-            process.env.OWNER_ID
-        ) {
-            return interaction.reply({
-                content:
-                    "❌ Bạn không có quyền sử dụng Protector Config.",
-                ephemeral: true
-            });
-        }
 
         if (!interaction.guild) {
             return interaction.reply({
@@ -187,8 +179,22 @@ module.exports = {
             });
         }
 
+        if (
+            !interaction.memberPermissions?.has(
+                PermissionFlagsBits.ManageGuild
+            )
+        ) {
+            return interaction.reply({
+                content:
+                    "❌ Bạn cần quyền Manage Server để sử dụng Protector Config.",
+                ephemeral: true
+            });
+        }
+
         return interaction.reply({
-            ...createPanel(interaction.guild),
+            ...createPanel(
+                interaction.guild
+            ),
             ephemeral: true
         });
     },
