@@ -1,7 +1,3 @@
-const {
-    PermissionFlagsBits
-} = require("discord.js");
-
 const configStore =
     require("../services/configStore");
 
@@ -13,15 +9,11 @@ const verification =
 
 module.exports = async function(interaction) {
 
-    /*
-     * ==============================
-     * SLASH COMMANDS
-     * ==============================
-     */
+    // ==========================================
+    // SLASH COMMANDS
+    // ==========================================
 
-    if (
-        interaction.isChatInputCommand()
-    ) {
+    if (interaction.isChatInputCommand()) {
 
         const command =
             interaction.client.commands.get(
@@ -34,9 +26,7 @@ module.exports = async function(interaction) {
 
         try {
 
-            await command.execute(
-                interaction
-            );
+            await command.execute(interaction);
 
         } catch (error) {
 
@@ -82,22 +72,18 @@ module.exports = async function(interaction) {
     }
 
 
-    /*
-     * ==============================
-     * BUTTONS
-     * ==============================
-     */
+    // ==========================================
+    // BUTTONS
+    // ==========================================
 
     if (!interaction.isButton()) {
         return;
     }
 
 
-    /*
-     * ==============================
-     * VERIFICATION BUTTON
-     * ==============================
-     */
+    // ==========================================
+    // VERIFICATION BUTTON
+    // ==========================================
 
     if (
         interaction.customId ===
@@ -147,27 +133,27 @@ module.exports = async function(interaction) {
                 error
             );
 
-            if (
-                interaction.deferred
-            ) {
+            try {
 
-                return interaction.editReply({
-                    content:
-                        "❌ Đã xảy ra lỗi trong quá trình xác minh."
-                });
+                if (interaction.deferred) {
 
-            }
+                    return interaction.editReply({
+                        content:
+                            "❌ Đã xảy ra lỗi trong quá trình xác minh."
+                    });
+
+                }
+
+            } catch {}
 
             return;
         }
     }
 
 
-    /*
-     * ==============================
-     * PROTECTOR BUTTONS
-     * ==============================
-     */
+    // ==========================================
+    // PROTECTOR CONFIG BUTTONS
+    // ==========================================
 
     if (
         !interaction.customId.startsWith(
@@ -178,30 +164,23 @@ module.exports = async function(interaction) {
     }
 
 
-    /*
-     * Chỉ người có Manage Server
-     * mới được điều khiển Config Panel.
-     */
-
+    // Chỉ OWNER_ID được sử dụng Config
     if (
-        !interaction.memberPermissions?.has(
-            PermissionFlagsBits.ManageGuild
-        )
+        !process.env.OWNER_ID ||
+        interaction.user.id !==
+        process.env.OWNER_ID
     ) {
 
         return interaction.reply({
             content:
-                "❌ Bạn cần quyền **Manage Server**.",
+                "❌ Chỉ Owner của bot mới có thể sử dụng Protector Config.",
             ephemeral: true
         });
     }
 
 
-    /*
-     * Kiểm tra guild
-     */
-
     if (!interaction.guild) {
+
         return interaction.reply({
             content:
                 "❌ Chức năng này chỉ dùng trong server.",
@@ -214,16 +193,12 @@ module.exports = async function(interaction) {
         interaction.guild.id;
 
     const config =
-        configStore.get(
-            guildId
-        );
+        configStore.get(guildId);
 
 
-    /*
-     * ==============================
-     * TOGGLE SETTINGS
-     * ==============================
-     */
+    // ==========================================
+    // CONFIG SETTINGS
+    // ==========================================
 
     const settings = {
 
@@ -259,6 +234,10 @@ module.exports = async function(interaction) {
         ];
 
 
+    // ==========================================
+    // TOGGLE SECURITY
+    // ==========================================
+
     if (setting) {
 
         const newValue =
@@ -292,11 +271,9 @@ module.exports = async function(interaction) {
     }
 
 
-    /*
-     * ==============================
-     * LANGUAGE
-     * ==============================
-     */
+    // ==========================================
+    // LANGUAGE
+    // ==========================================
 
     if (
         interaction.customId ===
@@ -316,33 +293,27 @@ module.exports = async function(interaction) {
             }
         );
 
-        await interaction.update(
+        return interaction.update(
             configCommand.createPanel(
                 interaction.guild
             )
         );
-
-        return;
     }
 
 
-    /*
-     * ==============================
-     * REFRESH
-     * ==============================
-     */
+    // ==========================================
+    // REFRESH
+    // ==========================================
 
     if (
         interaction.customId ===
         "protector_refresh"
     ) {
 
-        await interaction.update(
+        return interaction.update(
             configCommand.createPanel(
                 interaction.guild
             )
         );
-
-        return;
     }
 };
