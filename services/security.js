@@ -1,117 +1,117 @@
-const phishingPatterns = [
-    /free[-_ ]?nitro/i,
-    /discord[-_ ]?nitro/i,
-    /nitro[-_ ]?free/i,
-    /steam[-_ ]?gift/i,
-    /free[-_ ]?gift/i,
-    /claim[-_ ]?reward/i,
-    /claim[-_ ]?nitro/i,
-    /discord[-_ ]?gift/i,
-    /verify[-_ ]?account/i,
-    /login[-_ ]?discord/i,
-    /discord[-_ ]?login/i
+// services/security.js
+
+const URL_REGEX =
+    /(?:https?:\/\/)?(?:www\.)?(?:discord\.gg\/[^\s]+|discord\.com\/invite\/[^\s]+|[a-z0-9-]+\.[a-z]{2,}(?:\/[^\s]*)?)/gi;
+
+const SUSPICIOUS_DOMAINS = [
+    "grabify",
+    "iplogger",
+    "2no.co",
+    "yip.su",
+    "ps3cfw.com",
+    "discord-nitro",
+    "discordgift",
+    "discord-gifts",
+    "free-nitro",
+    "nitro-free",
+    "steamcomnunity",
+    "steamcommunity-gifts",
+    "discordapp-gift",
+    "discordgift"
 ];
 
-const shorteners = [
-    "bit.ly",
-    "tinyurl.com",
-    "cutt.ly",
-    "shorturl.at",
-    "is.gd",
-    "t.co"
+const ALLOWED_DOMAINS = [
+    "discord.com",
+    "discordapp.com",
+    "discord.gg",
+    "media.discordapp.net",
+    "cdn.discordapp.com"
 ];
 
-function extractUrls(text) {
-    return text.match(
-        /https?:\/\/[^\s<>()]+/gi
-    ) || [];
+function extractUrls(content = "") {
+    return content.match(URL_REGEX) || [];
 }
 
-function isDiscordInvite(url) {
-    return /discord(?:\.gg|\.com\/invite)\//i.test(
-        url
-    );
+function normalizeUrl(value) {
+    if (!/^https?:\/\//i.test(value)) {
+        return `https://${value}`;
+    }
+
+    return value;
 }
 
-function isPhishing(text) {
-    return phishingPatterns.some(
-        pattern => pattern.test(text)
-    );
-}
-
-function isShortener(url) {
+function getHostname(value) {
     try {
-        const hostname =
-            new URL(url).hostname
-                .toLowerCase()
-                .replace(/^www\./, "");
-
-        return shorteners.includes(hostname);
+        return new URL(
+            normalizeUrl(value)
+        ).hostname.toLowerCase();
     } catch {
-        return false;
+        return "";
     }
 }
 
-function isSuspiciousUrl(url) {
-    try {
-        const parsed = new URL(url);
-        const hostname =
-            parsed.hostname.toLowerCase();
+function isAllowedUrl(value) {
+    const hostname =
+        getHostname(value);
 
-        // IP address thay cho domain
-        if (
-            /^\d{1,3}(\.\d{1,3}){3}$/.test(
-                hostname
-            )
-        ) {
-            return true;
-        }
-
-        // Domain giả mạo Discord
-        if (
-            hostname.includes("discord") &&
-            !(
-                hostname === "discord.com" ||
-                hostname === "discord.gg" ||
-                hostname === "discordapp.com"
-            )
-        ) {
-            return true;
-        }
-
-        if (isShortener(url)) {
-            return true;
-        }
-
-        return false;
-    } catch {
+    if (!hostname) {
         return false;
     }
+
+    return ALLOWED_DOMAINS.some(
+        domain =>
+            hostname === domain ||
+            hostname.endsWith(`.${domain}`)
+    );
 }
 
-function analyzeMessage(message) {
-    const text = message.content || "";
+function isSuspiciousUrl(value) {
+    const lower =
+        value.toLowerCase();
 
-    const urls = extractUrls(text);
+    if (isAllowedUrl(value)) {
+        return false;
+    }
 
-    return {
-        urls,
+    const hostname =
+        getHostname(value);
 
-        hasInvite:
-            urls.some(isDiscordInvite),
+    if (
+        SUSPICIOUS_DOMAINS.some(
+            domain =>
+                hostname.includes(domain) ||
+                lower.includes(domain)
+        )
+    ) {
+        return true;
+    }
 
-        phishing:
-            isPhishing(text),
+    if (
+        hostname.includes("discord") &&
+        (
+            hostname.includes("nitro") ||
+            hostname.includes("gift") ||
+            hostname.includes("verify")
+        )
+    ) {
+        return true;
+    }
 
-        suspiciousUrls:
-            urls.filter(isSuspiciousUrl)
-    };
+    if (
+        lower.includes("free-nitro") ||
+        lower.includes("discord-nitro") ||
+        lower.includes("nitro-gift") ||
+        lower.includes("discord-gift") ||
+        lower.includes("steam-gift")
+    ) {
+        return true;
+    }
+
+    return false;
 }
 
 module.exports = {
     extractUrls,
-    isDiscordInvite,
-    isPhishing,
     isSuspiciousUrl,
-    analyzeMessage
+    isAllowedUrl
 };
