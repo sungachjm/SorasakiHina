@@ -1,9 +1,4 @@
-const express = require('express');
-const app = express();
-const port = process.env.PORT || 3000;
-
-app.get('/', (req, res) => res.send('Bot is running!'));
-app.listen(port, () => console.log(`Server listening on port ${port}`));
+// index.js
 
 require("dotenv").config();
 
@@ -32,13 +27,20 @@ if (!process.env.CLIENT_ID) {
     );
 }
 
+if (!process.env.GUILD_ID) {
+    throw new Error(
+        "❌ GUILD_ID chưa được cấu hình!"
+    );
+}
+
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMembers,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
-        GatewayIntentBits.GuildModeration
+        GatewayIntentBits.GuildModeration,
+        GatewayIntentBits.GuildWebhooks
     ],
 
     partials: [
